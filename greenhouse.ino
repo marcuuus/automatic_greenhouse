@@ -44,17 +44,11 @@ int att_luce = 540;  //Valore lumen attivazione luce
 int att_riscaldatore = 12;  //valore di attivazione riscaldamento
 
 // PARAMETRI DA SETTARE A PIACIMENTO  
-int periodo_pausa = 30;
 int valore_limite_sensore_terra = 1;
 
 //        VARIABILI DI ESECUZIONE
-boolean pausa = false;
-boolean irriga = true;
-int inizio_irri = -1;
-int pausa_end = 0;
+int irriga = 0;
 int apertura = 0;
-
-int minuto_irrigazione=0;
 
 //        VALORI LCD
 
@@ -63,7 +57,6 @@ int umdtrr = 0; //umidità terra
 int h = 0;  //umidità
 //char buf[15];
 
-WidgetLED irrigazione_on(V6);
 WidgetLED led_riscaldamento(V2);
 
 BLYNK_CONNECTED() {
@@ -96,6 +89,12 @@ BLYNK_WRITE(V10){
     
 }
 
+//controllo irrigazione led
+BLYNK_WRITE(V6){  
+  irriga = param.asInt();
+    
+}
+
 void repeatMe(int secondi) {
 
 //    sprintf(buf, "%02d/%02d %02d:%02d", day(), month(), hour(), minute());
@@ -112,39 +111,15 @@ void repeatMe(int secondi) {
     Blynk.virtualWrite(V5, h);
     Blynk.virtualWrite(V8, hour());
     readSoil();
-  
-    // Fine pausa irrigazione
-    if (pausa) {
-      if (minute() == pausa_end) {
-        pausa = false;
-        irriga = false;
-      }  
-    }
-    
-    if (inizio_irri == -1 || inizio_irri == secondi || inizio_irri == secondi+1) {
-      irriga = true;
-    } else {
-      irriga = false;
-    }
-    
-    // irrigazione parte se umidità sotto soglia, led livello acqua spento e non in pausa per aver appena irrigato
-    if (umdtrr <= att_irrigazione && umdtrr > valore_limite_sensore_terra && pausa == false && irriga == true) { 
+
+        
+    // irrigazione parte se umidità sotto soglia e non in pausa per aver appena irrigato
+    if (irriga == 1) { 
       digitalWrite(9, LOW); // Attiva irrigazione
       Serial.println("STO IRRIGANDO");
-      irrigazione_on.on();
-      pausa = true;
-      inizio_irri = secondi;
-      pausa_end = minute() + periodo_pausa;
-      if (pausa_end >= 60) {
-        pausa_end = pausa_end - 60;
-      }
     }
     else {
-      if (irriga == false) {
-        digitalWrite(9, HIGH); //disattiva irrigazione
-        irrigazione_on.off();
-        inizio_irri = -1;
-      }
+      digitalWrite(9, HIGH); //disattiva irrigazione
     }
 
 //                                                            LUCE
@@ -282,7 +257,7 @@ void loop()
     if (secondi == 0){
       Blynk.sendInternal("rtc", "sync");
     }
-    // ogni 15 secondi si esegue la funzione repeatMe. Questa funzione esegue tutte le operazioni della serra
+    // ogni 10 secondi si esegue la funzione repeatMe. Questa funzione esegue tutte le operazioni della serra
     if (secondi == 0 || secondi == 10 || secondi == 20 || secondi == 30 || secondi == 40 || secondi == 50) {
       repeatMe(secondi);
     }
